@@ -15,7 +15,7 @@ from pprint import pprint
 
 sandbox_key = 'Ojg5Y2Q0M2Y1YjVlNjdlMWMzYjY4M2NkZDc2MTQ0ODM3'
 
-
+colist = intrinio_sdk.CompanyApi().get_all_companies()
 
 intrinio_sdk.ApiClient().configuration.api_key['api_key'] = sandbox_key
 
@@ -42,7 +42,7 @@ cur = myConnection.cursor()
 cur.execute( "select * from dbo.test" )
 # for asofdate in cur.fetchall() :
 #     print(asofdate)
-print(pd.read_sql(sql = "select * from dbo.test", con = myConnection, parse_dates=['asofdate'], chunksize=None).head())
+print(pd.read_sql(sql = "select * from dbo.company_list", con = myConnection, parse_dates=['asofdate'], chunksize=None).head())
 
 myConnection.close()
 
