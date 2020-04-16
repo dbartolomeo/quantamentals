@@ -2,20 +2,20 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Apr 14 02:58:04 2020
-
+Run this code to update the company list on the postgres sql server
+1) inserts new companies
+2) updates old companies if information changes (i.e. ticker) by intrinio id
+3) flags companies as not current if dropped from intrinio
 @author: danielbartolomeo
 """
 
 import pandas as pd
-import numpy as np
 import intrinio_sdk
-from intrinio_sdk.rest import ApiException
-import psycopg2
 import json
 import os
 import time
-import datetime
-from sqlalchemy import create_engine
+import datetime as dt
+import sqlalchemy
 
 # get my password info
 with open(os.path.expanduser('~')+'/git_repository/quantamentals/password.json') as pass_file:
@@ -58,43 +58,39 @@ password=password_file.get('postgres',{}).get('server',{}).get(dbname,{}).get('p
 port=password_file.get('postgres',{}).get('server',{}).get(dbname,{}).get('port','')
 
 
-# connect to postgres db
-conn_str = psycopg2.connect(dbname=dbname, host=host, port=port, user=user, password=password)
-    
+# use sql alchemy conn string AND connect to database
+conn = sqlalchemy.create_engine('postgresql://'+user+':'+password+'@'+host+':'+port+'/'+dbname).connect()
+ 
 # get infor from db
-comp_db = pd.read_sql(sql = "select * from dbo.company_list", con = conn_str, parse_dates=['insert_date', 'update_date'], chunksize=None)
+comp_db = pd.read_sql(sql = "select * from dbo.company_list where is_current = 1", con = conn, parse_dates=['insert_date', 'update_date'], chunksize=None)
 
 
-
+# LIST OF COMPANIES:
 # new companies -- need to be added to database
-new_co = companies.loc[~companies['intrinio_id'].isin(comp_db.loc[comp_db['is_current'] == 1,'intrinio_id']),'intrinio_id']
+new_co = companies.loc[~companies['intrinio_id'].isin(comp_db.loc[:,'intrinio_id']),'intrinio_id']
 # old companies -- need to check if there have been any changes
-old_co = companies.loc[companies['intrinio_id'].isin(comp_db.loc[comp_db['is_current'] == 1,'intrinio_id']),'intrinio_id']
+old_co = companies.loc[companies['intrinio_id'].isin(comp_db.loc[:,'intrinio_id']),'intrinio_id']
 # companies no longer listed
-obs_co = comp_db.loc[~comp_db['intrinio_id'].isin(companies.loc[:,'intrinio_id']) & (comp_db['is_current'] == 1),'intrinio_id']
+obs_co = comp_db.loc[~comp_db['intrinio_id'].isin(companies.loc[:,'intrinio_id']),'intrinio_id']
+
+# insert new companies
+companies.loc[companies['intrinio_id'].isin(new_co),:].assign(insert_date = dt.date.today()).assign(update_date = dt.date.today()).assign(is_current = 1).to_sql('company_list', schema = 'dbo', con = conn, index = False, if_exists = 'append')
+
+# flag sql table entries that are no longer being feed into the api
+conn.execute("update dbo.company_list set update_date = '"+dt.date.today().strftime("%Y-%m-%d")+"', is_current = 0 where intrinio_id in ('"+"', '".join(obs_co.to_list())+"')")
+#conn.close()
 
 
 # check old companies
+old_co_update = []
 for co in old_co:
-    comp_db.loc[(comp_db['intrinio_id'] == co) & (comp_db['is_current'] == 1), 'update_date'] = datetime.date.today() 
-    if companies.loc[companies['intrinio_id'] == co,:].reset_index(drop = True).equals(comp_db.loc[(comp_db['intrinio_id'] == co) & (comp_db['is_current'] == 1), ['intrinio_id', 'ticker', 'company', 'lei', 'cik']].reset_index(drop = True)):
-        comp_db.loc[(comp_db['intrinio_id'] == co) & (comp_db['is_current'] == 1), 'update_date'] = datetime.date.today() 
-    else:
-        comp_db.loc[(comp_db['intrinio_id'] == co) & (comp_db['is_current'] == 1), 'is_current'] = 0
-        comp_db = pd.concat([comp_db, companies.loc[companies['intrinio_id'] == co,:].assign(insert_date = comp_db.loc[(comp_db['intrinio_id'] == co) & (comp_db['is_current'] == 1), 'insert_date']).assign(update_date = datetime.date.today()).assign(is_current = 1)], axis = 'index')
+    # no change
+    if not(companies.loc[companies['intrinio_id'] == co,:].reset_index(drop = True).equals(comp_db.loc[(comp_db['intrinio_id'] == co), ['intrinio_id', 'ticker', 'company', 'lei', 'cik']].reset_index(drop = True))):
+        old_co_update = old_co_update + companies.loc[companies['intrinio_id'] == co,'intrinio_id'].to_list()
+# update table flagging as old    
+conn.execute("update dbo.company_list set update_date = '"+dt.date.today().strftime("%Y-%m-%d")+"', is_current = 0 where intrinio_id in ('"+"', '".join(old_co_update)+"')")
+# insert the updated rows
+companies.loc[companies['intrinio_id'].isin(old_co_update),:].assign(insert_date = comp_db.loc[(comp_db['intrinio_id'].isin(old_co_update)), 'insert_date'].to_list()).assign(update_date = dt.date.today()).assign(is_current = 1).to_sql('company_list', schema = 'dbo', con = conn, index = False, if_exists = 'append')
 
-# set is current flag for obsolete companies
-for co in obs_co:
-    comp_db.loc[(comp_db['intrinio_id'] == co) & (comp_db['is_current'] == 1), 'update_date'] = datetime.date.today() 
-    comp_db.loc[(comp_db['intrinio_id'] == co) & (comp_db['is_current'] == 1), 'is_current'] = 0
-
-# add new companies
-comp_db = pd.concat([comp_db, companies.loc[companies['intrinio_id'].isin(new_co),:].assign(insert_date = datetime.date.today()).assign(update_date = datetime.date.today()).assign(is_current = 1)], axis = 'index')
-
-# use sql alchemy to write back to postgres
-engine = create_engine('postgresql://'+user+':'+password+'@'+host+':'+port+'/'+dbname)
-# write data
-comp_db.to_sql('company_list', schema = 'dbo', engine, index = False, if_exists = 'replace')
-
-# close conn 
-conn_str.close()
+# close the connection
+conn.close()
