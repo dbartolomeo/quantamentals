@@ -16,10 +16,10 @@ CREATE TABLE dbo.company_list (
 	-- current flag
 	,is_current bit
 	)
-/*
+;
+
 CREATE INDEX intrinio_id_plus_is_current
 ON dbo.company_list (intrinio_id, is_current);
-*/
 
 
 
