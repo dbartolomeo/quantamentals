@@ -76,7 +76,7 @@ CREATE TABLE dbo.company_details (
 	-- update date
 	,update_date date
 	-- current flag
-	,is_current bit
+	,is_current int
 	)
 
 ;
