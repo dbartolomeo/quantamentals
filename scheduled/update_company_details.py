@@ -36,6 +36,7 @@ conn = sqlalchemy.create_engine('postgresql://'+user+':'+password+'@'+host+':'+p
  
 # get list of intrinio ids to pull the company info for
 comp_list = pd.read_sql(sql = "select distinct intrinio_id from dbo.company_list where is_current = 1", con = conn, parse_dates=['insert_date', 'update_date'], chunksize=None)
+# companies currently in the details sql table
 comp_dets = pd.read_sql(sql = "select * from dbo.company_details where is_current = 1", con = conn, parse_dates=['insert_date', 'update_date'], chunksize=None)
 
 # connect to intrino
