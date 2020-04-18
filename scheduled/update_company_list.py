@@ -47,7 +47,7 @@ while colist.get('next_page') is not None:
         time.sleep(1.0)
 
 # reset the index
-companies = companies.reset_index(drop = True).rename(columns = {'id':'intrinio_id', 'name':'company'})
+companies = companies.reset_index(drop = True).rename(columns = {'id':'company_id', 'name':'company'})
 
 
 # prep the sql call
@@ -67,17 +67,17 @@ comp_db = pd.read_sql(sql = "select * from dbo.company_list where is_current = 1
 
 # LIST OF COMPANIES:
 # new companies -- need to be added to database
-new_co = companies.loc[~companies['intrinio_id'].isin(comp_db.loc[:,'intrinio_id']),'intrinio_id']
+new_co = companies.loc[~companies['company_id'].isin(comp_db.loc[:,'company_id']),'company_id']
 # old companies -- need to check if there have been any changes
-old_co = companies.loc[companies['intrinio_id'].isin(comp_db.loc[:,'intrinio_id']),'intrinio_id']
+old_co = companies.loc[companies['company_id'].isin(comp_db.loc[:,'company_id']),'company_id']
 # companies no longer listed
-obs_co = comp_db.loc[~comp_db['intrinio_id'].isin(companies.loc[:,'intrinio_id']),'intrinio_id']
+obs_co = comp_db.loc[~comp_db['company_id'].isin(companies.loc[:,'company_id']),'company_id']
 
 # insert new companies
-companies.loc[companies['intrinio_id'].isin(new_co),:].assign(insert_date = dt.date.today()).assign(update_date = dt.date.today()).assign(is_current = 1).to_sql('company_list', schema = 'dbo', con = conn, index = False, if_exists = 'append')
+companies.loc[companies['company_id'].isin(new_co),:].assign(insert_date = dt.date.today()).assign(update_date = dt.date.today()).assign(is_current = 1).to_sql('company_list', schema = 'dbo', con = conn, index = False, if_exists = 'append')
 
 # flag sql table entries that are no longer being feed into the api
-conn.execute("update dbo.company_list set update_date = '"+dt.date.today().strftime("%Y-%m-%d")+"', is_current = 0 where intrinio_id in ('"+"', '".join(obs_co.to_list())+"')")
+conn.execute("update dbo.company_list set update_date = '"+dt.date.today().strftime("%Y-%m-%d")+"', is_current = 0 where company_id in ('"+"', '".join(obs_co.to_list())+"')")
 #conn.close()
 
 
@@ -85,12 +85,12 @@ conn.execute("update dbo.company_list set update_date = '"+dt.date.today().strft
 old_co_update = []
 for co in old_co:
     # no change
-    if not(companies.loc[companies['intrinio_id'] == co,:].reset_index(drop = True).equals(comp_db.loc[(comp_db['intrinio_id'] == co), ['intrinio_id', 'ticker', 'company', 'lei', 'cik']].reset_index(drop = True))):
-        old_co_update = old_co_update + companies.loc[companies['intrinio_id'] == co,'intrinio_id'].to_list()
+    if not(companies.loc[companies['company_id'] == co,:].reset_index(drop = True).equals(comp_db.loc[(comp_db['company_id'] == co), ['company_id', 'ticker', 'company', 'lei', 'cik']].reset_index(drop = True))):
+        old_co_update = old_co_update + companies.loc[companies['company_id'] == co,'company_id'].to_list()
 # update table flagging as old    
-conn.execute("update dbo.company_list set update_date = '"+dt.date.today().strftime("%Y-%m-%d")+"', is_current = 0 where intrinio_id in ('"+"', '".join(old_co_update)+"')")
+conn.execute("update dbo.company_list set update_date = '"+dt.date.today().strftime("%Y-%m-%d")+"', is_current = 0 where company_id in ('"+"', '".join(old_co_update)+"')")
 # insert the updated rows
-companies.loc[companies['intrinio_id'].isin(old_co_update),:].assign(insert_date = comp_db.loc[(comp_db['intrinio_id'].isin(old_co_update)), 'insert_date'].to_list()).assign(update_date = dt.date.today()).assign(is_current = 1).to_sql('company_list', schema = 'dbo', con = conn, index = False, if_exists = 'append')
+companies.loc[companies['company_id'].isin(old_co_update),:].assign(insert_date = comp_db.loc[(comp_db['company_id'].isin(old_co_update)), 'insert_date'].to_list()).assign(update_date = dt.date.today()).assign(is_current = 1).to_sql('company_list', schema = 'dbo', con = conn, index = False, if_exists = 'append')
 
 # close the connection
 conn.close()

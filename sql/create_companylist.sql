@@ -1,6 +1,6 @@
 CREATE TABLE dbo.company_list (
 	-- The Intrinio ID of the company // id	str
-	intrinio_id varchar(50)
+	company_id varchar(50)
 	-- The stock market ticker symbol associated with the company's common stock securities  // ticker	str	
 	,ticker varchar(50)
 	-- The company's common name  // name	str
@@ -14,12 +14,12 @@ CREATE TABLE dbo.company_list (
 	-- update date
 	,update_date date
 	-- current flag
-	,is_current bit
+	,is_current int
 	)
 ;
 
-CREATE INDEX intrinio_id_plus_is_current
-ON dbo.company_list (intrinio_id, is_current);
+CREATE INDEX company_list_company_id_plus_is_current
+ON dbo.company_list (company_id, is_current);
 
 
 
