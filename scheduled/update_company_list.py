@@ -42,9 +42,10 @@ while colist.get('next_page') is not None:
     except:
         # if there is an issue break out of loop
         break
-    # if you can not reached the end of file sleep for 1 second as to not overload API
+    # if you can not reached the end of file sleep 
     if colist.get('next_page') is not None:
-        time.sleep(1.0)
+        # ensure no more than 100 API calls per sec
+        time.sleep(0.01)
 
 # reset the index
 companies = companies.reset_index(drop = True).rename(columns = {'id':'company_id', 'name':'company'})

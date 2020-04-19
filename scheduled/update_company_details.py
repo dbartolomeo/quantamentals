@@ -63,8 +63,9 @@ for int_id in comp_list.loc[:,'company_id'].to_list():
         conn.execute("update dbo.company_details set update_date = '"+dt.date.today().strftime("%Y-%m-%d")+"' , is_current = 0 where company_id = '"+int_id+"' and is_current = 1")
         # add the api pulled values
         temp_pd.assign(insert_date = comp_dets.loc[comp_dets['company_id']==int_id, 'insert_date']).assign(update_date = dt.date.today()).assign(is_current = 1).to_sql('company_details', schema = 'dbo', con = conn, index = False, if_exists = 'append')
-    # once complete sleep for 1 sec as to not overwhelm the API
-    time.sleep(0.25)
+    
+    # ensure no more than 100 API calls per sec
+    time.sleep(0.01)
 
 # close the connection
 conn.close()
