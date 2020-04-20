@@ -34,4 +34,3 @@ CREATE TABLE dbo.security_price (
 
 CREATE INDEX security_price_intrinio_id_plus_asofdate
 ON dbo.security_price (intrinio_id, asofdate);
-
