@@ -60,3 +60,31 @@ lis = [li.text.split('\r')[0] for li in soup.find('div', {'class':'body--contain
 
 
 
+company_api = intrinio_sdk.CompanyApi()
+
+identifier = 'AAPL' # str | A Company identifier (Ticker, CIK, LEI, Intrinio ID)
+filed_after = '' # date | Filed on or after this date (optional)
+filed_before = '' # date | Filed on or before this date (optional)
+reported_only = False # bool | Only as-reported fundamentals (optional)
+fiscal_year = 2019 # int | Only for the given fiscal year (optional)
+statement_code = '' # str | Only of the given statement code (optional)
+type = '' # str | Only of the given type (optional)
+start_date = '' # date | Only on or after the given date (optional)
+end_date = '' # date | Only on or before the given date (optional)
+page_size = 100 # int | The number of results to return (optional) (default to 100)
+next_page = '' # str | Gets the next page of data from a previous API call (optional)
+
+api_response = company_api.get_company_fundamentals(identifier, filed_after=filed_after, filed_before=filed_before, reported_only=reported_only, fiscal_year=fiscal_year, statement_code=statement_code, type=type, start_date=start_date, end_date=end_date, page_size=page_size, next_page=next_page)
+res  = api_response.to_dict()
+
+
+fundamentals_api = intrinio_sdk.FundamentalsApi()
+
+id = 'AAPL-income_statement-2018-Q1' # str | The Intrinio ID or lookup code (ticker-statement-year-period) for the Fundamental
+api_response = fundamentals_api.get_fundamental_standardized_financials(id)
+res  = api_response.to_dict()
+
+
+
+
+
